@@ -66,11 +66,12 @@ export function flyPigment(
   });
 }
 
-export function burst(origin: DOMRect, color: string, reduce: boolean): void {
+export function burst(origin: DOMRect, color: string, reduce: boolean, scale = 1): void {
   if (reduce) return;
   const count = 8;
   const cx = origin.left + origin.width / 2 - 5;
   const cy = origin.top + origin.height / 2 - 5;
+  const reach = 92 * scale;
   for (let i = 0; i < count; i += 1) {
     const el = spawn('spark');
     el.style.background = color;
@@ -79,11 +80,11 @@ export function burst(origin: DOMRect, color: string, reduce: boolean): void {
       el,
       { x: cx, y: cy, scale: 0.7, opacity: 1 },
       {
-        x: cx + Math.cos(angle) * 92,
-        y: cy + Math.sin(angle) * 92,
+        x: cx + Math.cos(angle) * reach,
+        y: cy + Math.sin(angle) * reach,
         scale: 0.2,
         opacity: 0,
-        duration: 0.55,
+        duration: 0.55 + scale * 0.12,
         ease: 'power2.out',
         overwrite: 'auto',
         onComplete: () => drop(el),
@@ -91,6 +92,79 @@ export function burst(origin: DOMRect, color: string, reduce: boolean): void {
       },
     );
   }
+}
+
+function confettiShower(origin: DOMRect, colors: string[]): void {
+  const cx = origin.left + origin.width / 2;
+  const cy = origin.top + origin.height / 2;
+  const pieces = 22;
+  for (let i = 0; i < pieces; i += 1) {
+    const el = spawn('confetti');
+    const color = colors[i % colors.length] ?? '#dff25a';
+    el.style.background = color;
+    const angle = (i / pieces) * Math.PI * 2 + (i % 3) * 0.4;
+    const dist = 110 + (i % 5) * 18;
+    const spin = (i % 2 === 0 ? 1 : -1) * (240 + i * 12);
+    gsap.fromTo(
+      el,
+      { x: cx, y: cy, rotation: 0, scale: 1, opacity: 1 },
+      {
+        x: cx + Math.cos(angle) * dist,
+        y: cy + Math.sin(angle) * dist - 40,
+        rotation: spin,
+        scale: 0.35,
+        opacity: 0,
+        duration: 0.85 + (i % 4) * 0.08,
+        ease: 'power2.out',
+        overwrite: 'auto',
+        onComplete: () => drop(el),
+        onInterrupt: () => drop(el),
+      },
+    );
+  }
+}
+
+export function celebrateLevelWin(
+  well: Element | null,
+  origin: DOMRect,
+  mixColor: string,
+  reduce: boolean,
+): void {
+  if (reduce) return;
+  burst(origin, mixColor, false, 1.35);
+  burst(origin, '#dff25a', false, 0.85);
+  confettiShower(origin, [mixColor, '#dff25a', '#f3ecdf', mixColor]);
+  if (!well) return;
+  gsap.fromTo(
+    well,
+    { scale: 1, rotate: 0 },
+    {
+      scale: 1.06,
+      rotate: 0.6,
+      duration: 0.22,
+      ease: 'power2.out',
+      yoyo: true,
+      repeat: 1,
+      overwrite: 'auto',
+    },
+  );
+  gsap.fromTo(
+    well,
+    { boxShadow: '0 18px 36px rgba(0, 0, 0, 0.28)' },
+    {
+      boxShadow: '0 22px 44px rgba(0, 0, 0, 0.34), 0 0 32px rgba(255, 255, 255, 0.12)',
+      duration: 0.35,
+      ease: 'power2.out',
+      overwrite: 'auto',
+    },
+  );
+}
+
+export function celebrateCampaign(origin: DOMRect, reduce: boolean): void {
+  if (reduce) return;
+  burst(origin, '#dff25a', false, 1.8);
+  confettiShower(origin, ['#dff25a', '#f3ecdf', '#e8c547', '#dff25a']);
+  confettiShower(origin, ['#dff25a', '#f3ecdf', '#e8c547', '#ffffff']);
 }
 
 export function punch(el: Element | null, reduce: boolean): void {

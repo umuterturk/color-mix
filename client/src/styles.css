@@ -192,6 +192,18 @@ button:focus-visible {
   min-height: 48px;
 }
 
+.bar-spacer {
+  width: 44px;
+  justify-self: start;
+}
+
+.bar-tools {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
 .text-btn,
 .icon-btn,
 .ghost {
@@ -214,6 +226,25 @@ button:focus-visible {
   height: 44px;
   display: grid;
   place-items: center;
+}
+
+.bar-tools .icon-btn {
+  justify-self: auto;
+}
+
+.bar-icon {
+  display: block;
+  width: 22px;
+  height: 22px;
+  color: #ddd4c6;
+}
+
+.icon-btn[aria-pressed='true'] .bar-icon {
+  color: var(--signal);
+}
+
+.icon-btn:disabled {
+  opacity: 0.35;
 }
 
 .pause-icon,
@@ -250,6 +281,11 @@ button:focus-visible {
   color: var(--muted);
   font: 600 11px/1 var(--sans);
   letter-spacing: 0.16em;
+}
+
+.meta .level-total {
+  color: rgba(243, 236, 223, 0.55);
+  font-weight: 500;
   text-transform: uppercase;
 }
 
@@ -275,7 +311,15 @@ button:focus-visible {
   width: 72px;
   height: 72px;
   border-radius: 50%;
-  box-shadow: inset 0 -8px 14px rgba(0, 0, 0, 0.2);
+}
+
+.color-orb {
+  box-shadow:
+    inset 0 -8px 12px rgba(0, 0, 0, 0.22),
+    0 0 0 2px rgba(255, 255, 255, 0.22),
+    0 0 22px rgba(255, 255, 255, 0.18),
+    0 0 36px rgba(0, 0, 0, 0.55),
+    0 12px 28px rgba(0, 0, 0, 0.42);
 }
 
 .target figcaption {
@@ -286,10 +330,98 @@ button:focus-visible {
 }
 
 .well-block {
+  position: relative;
   width: min(58vw, 240px, 34dvh);
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+.level-celebration {
+  position: absolute;
+  inset: auto 0 calc(100% + 6px);
+  z-index: 2;
+  padding: 10px 14px 12px;
+  border-radius: 16px;
+  text-align: center;
+  background: rgba(26, 23, 15, 0.92);
+  border: 1px solid rgba(223, 242, 90, 0.45);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  animation: level-celebration-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.level-celebration-kicker {
+  margin: 0;
+  font: 600 10px/1.2 var(--sans);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.level-celebration-title {
+  margin: 6px 0 0;
+  font-family: var(--serif);
+  font-size: 26px;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  color: var(--signal);
+}
+
+.campaign-celebration {
+  position: fixed;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(16, 14, 12, 0.72);
+  backdrop-filter: blur(6px);
+  animation: campaign-in 0.5s ease both;
+  pointer-events: none;
+}
+
+.campaign-celebration-card {
+  max-width: 18rem;
+}
+
+.campaign-celebration-kicker {
+  margin: 0;
+  text-align: center;
+  font: 600 11px/1.3 var(--sans);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.campaign-celebration-title {
+  margin: 10px 0 0;
+  text-align: center;
+  font-family: var(--serif);
+  font-size: clamp(36px, 10vw, 52px);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+  color: var(--signal);
+}
+
+@keyframes level-celebration-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes campaign-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .well {
@@ -323,9 +455,7 @@ button:focus-visible {
 }
 
 .well.matched {
-  box-shadow:
-    0 0 0 6px var(--signal),
-    0 18px 36px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.28);
 }
 
 .readout {
@@ -382,6 +512,34 @@ button:focus-visible {
   gap: 8px;
 }
 
+.pigments-hint .pigment:not(:disabled) .dot {
+  animation: pigment-cta-glow 1.8s ease-in-out infinite;
+}
+
+.pigments-hint .pigment:not(:disabled) .name {
+  color: var(--signal);
+}
+
+@keyframes pigment-cta-glow {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 -8px 12px rgba(0, 0, 0, 0.22),
+      0 0 0 2px rgba(255, 255, 255, 0.22),
+      0 0 18px rgba(255, 255, 255, 0.16),
+      0 0 32px rgba(0, 0, 0, 0.5),
+      0 12px 24px rgba(0, 0, 0, 0.4);
+  }
+  50% {
+    box-shadow:
+      inset 0 -8px 12px rgba(0, 0, 0, 0.22),
+      0 0 0 3px rgba(255, 255, 255, 0.4),
+      0 0 28px rgba(255, 255, 255, 0.28),
+      0 0 40px rgba(0, 0, 0, 0.5),
+      0 14px 30px rgba(0, 0, 0, 0.48);
+  }
+}
+
 .pigment {
   appearance: none;
   border: 0;
@@ -402,9 +560,6 @@ button:focus-visible {
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  box-shadow:
-    inset 0 -8px 12px rgba(0, 0, 0, 0.18),
-    0 8px 16px rgba(0, 0, 0, 0.2);
 }
 
 .pigment:active:not(:disabled) .dot {
@@ -469,15 +624,96 @@ button:focus-visible {
   text-transform: none;
 }
 
+.play-loading {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+}
+
+.play-loading .boot {
+  position: relative;
+  z-index: 0;
+}
+
+.intro-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(16, 14, 12, 0.82);
+  backdrop-filter: blur(8px);
+}
+
+.intro-card {
+  width: min(100%, 320px);
+  padding: 22px 20px 20px;
+  border-radius: 20px;
+  text-align: center;
+  background: var(--ground);
+  border: 1px solid rgba(243, 236, 223, 0.12);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+}
+
+.intro-kicker {
+  margin: 0;
+  font: 600 10px/1.2 var(--sans);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.intro-title {
+  margin: 10px 0 0;
+  font-family: var(--serif);
+  font-size: 34px;
+  font-weight: 500;
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+}
+
+.intro-copy {
+  margin: 14px 0 18px;
+  font: 400 16px/1.45 var(--serif);
+  color: #ddd4c6;
+}
+
+.intro-cta {
+  animation: intro-cta-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes intro-cta-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(223, 242, 90, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(223, 242, 90, 0);
+  }
+}
+
 .flyer,
-.spark {
+.spark,
+.confetti {
   position: fixed;
   left: 0;
   top: 0;
-  border-radius: 50%;
   pointer-events: none;
   z-index: 3;
   will-change: transform;
+}
+
+.flyer,
+.spark {
+  border-radius: 50%;
+}
+
+.confetti {
+  width: 8px;
+  height: 14px;
+  border-radius: 2px;
 }
 
 .flyer {
@@ -505,5 +741,15 @@ button:focus-visible {
   .cta:active,
   .pigment:active:not(:disabled) .dot {
     transform: none;
+  }
+
+  .level-celebration,
+  .campaign-celebration {
+    animation: none;
+  }
+
+  .pigments-hint .pigment:not(:disabled) .dot,
+  .intro-cta {
+    animation: none;
   }
 }

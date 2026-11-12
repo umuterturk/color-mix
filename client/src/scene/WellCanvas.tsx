@@ -2,15 +2,21 @@ import { useEffect, useRef } from 'react';
 import type { RGB } from '../../../shared/color.ts';
 import {
   createField,
-  FAST_DIFFUSION,
   FIELD_SIZE,
   fillField,
+  injectPourFlow,
   isSettled,
+  MARBLE_DIFFUSION,
   stampPour,
   stepField,
   type Field,
   type SpeedVector,
 } from '../../../shared/diffusion.ts';
+
+function resetBlendClock(blendStart: { current: number }, blendElapsed: { current: number }): void {
+  blendStart.current = performance.now();
+  blendElapsed.current = 0;
+}
 
 type WellCanvasProps = {
   color: RGB;
@@ -18,6 +24,7 @@ type WellCanvasProps = {
   pours: number;
   pigment: RGB | null;
   speed: SpeedVector;
+  pourSeed: number;
   paused: boolean;
   reducedMotion: boolean;
 };
@@ -45,9 +52,9 @@ function paint(canvas: HTMLCanvasElement, blot: HTMLCanvasElement, field: Field)
   const image = blotCtx.createImageData(size, size);
   const data = image.data;
   for (let i = 0, p = 0; i < px.length; i += 3, p += 4) {
-    data[p] = px[i] ?? 0;
-    data[p + 1] = px[i + 1] ?? 0;
-    data[p + 2] = px[i + 2] ?? 0;
+    data[p] = Math.max(0, Math.min(255, Math.round(px[i] ?? 0)));
+    data[p + 1] = Math.max(0, Math.min(255, Math.round(px[i + 1] ?? 0)));
+    data[p + 2] = Math.max(0, Math.min(255, Math.round(px[i + 2] ?? 0)));
     data[p + 3] = 255;
   }
   blotCtx.putImageData(image, 0, 0);
@@ -57,14 +64,15 @@ function paint(canvas: HTMLCanvasElement, blot: HTMLCanvasElement, field: Field)
   ctx.drawImage(blot, 0, 0, width, height);
 }
 
-export function WellCanvas({ color, base, pours, pigment, speed, paused, reducedMotion }: WellCanvasProps) {
+export function WellCanvas({ color, base, pours, pigment, speed, pourSeed, paused, reducedMotion }: WellCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const blotRef = useRef<HTMLCanvasElement | null>(null);
   const fieldRef = useRef<Field | null>(null);
-  const speedRef = useRef<SpeedVector>({ x: 0, y: 0 });
   const colorRef = useRef(color);
   const pausedRef = useRef(paused);
   const seen = useRef<{ pours: number; base: string } | null>(null);
+  const blendStart = useRef(performance.now());
+  const blendElapsed = useRef(0);
   colorRef.current = color;
   pausedRef.current = paused;
 
@@ -82,23 +90,23 @@ export function WellCanvas({ color, base, pours, pigment, speed, paused, reduced
 
     if (newRound || pours === 0) {
       fillField(field, base);
-      speedRef.current = { x: 0, y: 0 };
+      resetBlendClock(blendStart, blendElapsed);
     }
 
     if (pours > 0 && pigment && (newRound || !previous || previous.pours < pours)) {
       if (newRound) fillField(field, base);
-      stampPour(field, pigment);
-      speedRef.current = { x: speed.x, y: speed.y };
+      stampPour(field, pigment, pours, speed, pourSeed);
+      injectPourFlow(field, speed, pourSeed);
+      resetBlendClock(blendStart, blendElapsed);
     }
 
     if (reducedMotion) {
       fillField(field, color);
-      speedRef.current = { x: 0, y: 0 };
     }
 
     seen.current = { pours, base: baseKey };
     paint(canvas, blot, field);
-  }, [base.b, base.g, base.r, baseKey, color.b, color.g, color.r, pigment, pours, reducedMotion, speed.x, speed.y]);
+  }, [base.b, base.g, base.r, baseKey, color.b, color.g, color.r, pigment, pours, pourSeed, reducedMotion, speed.x, speed.y]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -119,17 +127,17 @@ export function WellCanvas({ color, base, pours, pigment, speed, paused, reduced
       const dt = Math.min(0.032, (now - last) / 1000);
       last = now;
       const target = colorRef.current;
-      let moving = speedRef.current.x ** 2 + speedRef.current.y ** 2 > 0.04;
-      if (!pausedRef.current && (moving || !isSettled(field, target))) {
-        speedRef.current = stepField(field, speedRef.current, dt, target, FAST_DIFFUSION);
-        if (isSettled(field, target)) speedRef.current = { x: 0, y: 0 };
-        moving = speedRef.current.x ** 2 + speedRef.current.y ** 2 > 0.04;
+      if (!pausedRef.current) blendElapsed.current += dt;
+      const elapsed = blendElapsed.current;
+      const active = !isSettled(field, target, elapsed);
+      if (!pausedRef.current && active) {
+        stepField(field, dt, MARBLE_DIFFUSION, target, elapsed);
         paint(canvas, blot, field);
       } else if (!pausedRef.current) {
         paint(canvas, blot, field);
       }
 
-      if (pausedRef.current || moving || !isSettled(field, target)) {
+      if (pausedRef.current || active) {
         frame = window.requestAnimationFrame(tick);
       }
     };

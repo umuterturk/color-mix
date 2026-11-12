@@ -1,7 +1,7 @@
 import { mixColors, type RGB } from './color.ts';
 import type { Pigment, PlannedRound, PublicRound } from './types.ts';
 
-const BASE: RGB = { r: 232, g: 226, b: 214 };
+export const ROUND_BASE: RGB = { r: 232, g: 226, b: 214 };
 
 export const CATALOG: readonly Pigment[] = [
   { id: 'vermilion', name: 'vermilion', rgb: { r: 217, g: 58, b: 42 } },
@@ -67,8 +67,8 @@ export function planRound(rng: () => number = Math.random): PlannedRound {
   const drops = expandCounts(pigments, counts);
   const publicRound: PublicRound = {
     id: crypto.randomUUID(),
-    base: BASE,
-    target: mixColors(BASE, drops),
+    base: ROUND_BASE,
+    target: mixColors(ROUND_BASE, drops),
     pigments,
     maxDrops: drops.length + 2,
   };
