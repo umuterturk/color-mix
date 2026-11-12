@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
 import { closeness, colorDistance, rgbCss } from '../../../shared/color.ts';
 import { addDrop, clearDrops, currentMix, emptyMix, matched, type MixState } from '../../../shared/mix-state.ts';
-import { parseRound } from '../../../shared/parse.ts';
 import type { Pigment, PublicRound } from '../../../shared/types.ts';
 import { useMotionPause } from '../hooks/useMotionPause.ts';
 import { burst, clearJuice, flyPigment, punch } from '../motion/juice.ts';
+import { loadRound } from '../studio.ts';
 
 type PlaySceneProps = {
   paused: boolean;
@@ -33,10 +33,7 @@ export default function PlayScene({ paused, held, reducedMotion, onExit, onToggl
     const controller = new AbortController();
     inflight.current = controller;
     try {
-      const response = await fetch('/api/round', { signal: controller.signal, cache: 'no-store' });
-      if (!response.ok) throw new Error('bad status');
-      const next = parseRound(await response.json());
-      if (!next) throw new Error('bad round');
+      const next = await loadRound(controller.signal);
       if (controller.signal.aborted) return;
       setRound(next);
       setMix(emptyMix(next));
@@ -108,7 +105,7 @@ export default function PlayScene({ paused, held, reducedMotion, onExit, onToggl
   }
 
   if (!round || !mix) {
-    return <p className="boot">Fetching a swatch…</p>;
+    return <p className="boot">Preparing a swatch…</p>;
   }
 
   const color = currentMix(mix);
