@@ -1,6 +1,7 @@
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { extname, join, normalize, sep } from 'node:path';
+import { normalizeLevel, planLevel } from '../shared/levels.ts';
 import { planRound } from '../shared/round.ts';
 
 export type ServerOptions = {
@@ -47,6 +48,17 @@ function requestPath(req: IncomingMessage): string {
   const raw = req.url ?? '/';
   const query = raw.indexOf('?');
   return query === -1 ? raw : raw.slice(0, query);
+}
+
+function queryLevel(req: IncomingMessage): number | null {
+  const raw = req.url ?? '/';
+  const query = raw.indexOf('?');
+  if (query === -1) return null;
+  const level = new URLSearchParams(raw.slice(query + 1)).get('level');
+  if (level === null || level === '') return null;
+  const parsed = Number(level);
+  if (!Number.isFinite(parsed)) return null;
+  return parsed;
 }
 
 function safeFile(root: string, urlPath: string): string | null {
@@ -127,7 +139,8 @@ export function createAppServer(options: ServerOptions = {}): Server {
         return;
       }
       if (path === '/api/round') {
-        const { publicRound } = planRound(rng);
+        const level = queryLevel(req);
+        const { publicRound } = level === null ? planRound(rng) : planLevel(normalizeLevel(level));
         sendJson(res, 200, publicRound);
         return;
       }

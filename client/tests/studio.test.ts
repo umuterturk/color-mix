@@ -4,16 +4,6 @@ import { dealRound, loadRound } from '../src/studio.ts';
 import { parseRound } from '../../shared/parse.ts';
 import { CATALOG } from '../../shared/round.ts';
 
-function mulberry32(seed: number): () => number {
-  let state = seed >>> 0;
-  return () => {
-    state = (state + 0x6d2b79f5) | 0;
-    let t = Math.imul(state ^ (state >>> 15), 1 | state);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
 test('dealRound returns a catalog round and does not call fetch', () => {
   let called = false;
   const original = globalThis.fetch;
@@ -22,14 +12,15 @@ test('dealRound returns a catalog round and does not call fetch', () => {
     throw new Error('network');
   }) as typeof fetch;
   try {
-    const round = dealRound(mulberry32(7));
+    const round = dealRound(7);
     const ids = new Set(CATALOG.map((pigment) => pigment.id));
 
     expect(parseRound(round)).toEqual(round);
     expect(round).not.toHaveProperty('counts');
+    expect(round.id).toBe('level-07');
     expect(round.pigments).toHaveLength(3);
-    expect(round.maxDrops).toBeGreaterThanOrEqual(4);
-    expect(round.maxDrops).toBeLessThanOrEqual(6);
+    expect(round.maxDrops).toBeGreaterThanOrEqual(2);
+    expect(round.maxDrops).toBeLessThanOrEqual(9);
     for (const pigment of round.pigments) expect(ids.has(pigment.id)).toBe(true);
     expect(called).toBe(false);
   } finally {
@@ -38,7 +29,7 @@ test('dealRound returns a catalog round and does not call fetch', () => {
 });
 
 test('fetchRound reads /api/round and rejects a bad payload', async () => {
-  const sample = dealRound(() => 0.2);
+  const sample = dealRound(3);
   const calls: string[] = [];
   const original = globalThis.fetch;
   globalThis.fetch = (async (input: RequestInfo | URL) => {
@@ -52,9 +43,9 @@ test('fetchRound reads /api/round and rejects a bad payload', async () => {
     return new Response('nope', { status: 500 });
   }) as typeof fetch;
   try {
-    const round = await fetchRound(new AbortController().signal);
+    const round = await fetchRound(new AbortController().signal, 3);
     expect(round).toEqual(sample);
-    expect(calls).toEqual(['/api/round']);
+    expect(calls).toEqual(['/api/round?level=3']);
     await expect(fetchRound(new AbortController().signal)).rejects.toThrow('bad status');
   } finally {
     globalThis.fetch = original;
@@ -62,7 +53,7 @@ test('fetchRound reads /api/round and rejects a bad payload', async () => {
 });
 
 test('loadRound uses the API outside the static production build', async () => {
-  const sample = dealRound(() => 0.4);
+  const sample = dealRound(1);
   const calls: string[] = [];
   const original = globalThis.fetch;
   globalThis.fetch = (async (input: RequestInfo | URL) => {
@@ -71,9 +62,9 @@ test('loadRound uses the API outside the static production build', async () => {
   }) as typeof fetch;
   try {
     expect(import.meta.env.PROD).toBe(false);
-    const round = await loadRound(new AbortController().signal);
-    expect(round).toEqual(sample);
-    expect(calls).toEqual(['/api/round']);
+    const round = await loadRound(new AbortController().signal, 1);
+    expect(round).toEqual(dealRound(1));
+    expect(calls).toEqual(['/api/round?level=1']);
   } finally {
     globalThis.fetch = original;
   }
