@@ -71,6 +71,36 @@ function getContext(): AudioContext | null {
   return context;
 }
 
+/** Resume Safari/iOS audio after a user gesture (click/touch). */
+function withRunningContext(onReady: (ctx: AudioContext) => void): void {
+  if (audioMuted) return;
+  const ctx = getContext();
+  if (!ctx) return;
+  const run = () => {
+    if (masterBus) masterBus.gain.value = MASTER_GAIN;
+    onReady(ctx);
+  };
+  if (ctx.state === 'suspended') {
+    void ctx.resume().then(run).catch(() => undefined);
+    return;
+  }
+  void ctx.resume();
+  run();
+}
+
+function playIosUnlockBlip(ctx: AudioContext): void {
+  const buffer = ctx.createBuffer(1, 1, 22050);
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+  source.connect(master(ctx));
+  source.start(0);
+  source.stop(ctx.currentTime + 0.02);
+}
+
+export function unlockAudio(): void {
+  withRunningContext(playIosUnlockBlip);
+}
+
 function master(ctx: AudioContext): GainNode {
   if (!masterBus) {
     masterBus = ctx.createGain();
@@ -146,19 +176,15 @@ export function composePourChord(
   return blendChords(pigmentChord, targetChord, towardTarget);
 }
 
-export function playChord(notes: Chord, reducedMotion: boolean, velocityScale = 1, when?: number): void {
-  if (reducedMotion || audioMuted) return;
-  const ctx = getContext();
-  if (!ctx) return;
-  void ctx.resume();
-  if (masterBus) masterBus.gain.value = MASTER_GAIN;
+export function playChord(notes: Chord, velocityScale = 1, when?: number): void {
+  withRunningContext((ctx) => {
+    const start = when ?? ctx.currentTime;
+    const velocity = (0.2 / Math.max(1, Math.sqrt(notes.length))) * velocityScale;
+    const roll = 0.014;
 
-  const start = when ?? ctx.currentTime;
-  const velocity = (0.2 / Math.max(1, Math.sqrt(notes.length))) * velocityScale;
-  const roll = 0.014;
-
-  notes.forEach((midi, index) => {
-    playPianoNote(ctx, midi, start + index * roll, velocity);
+    notes.forEach((midi, index) => {
+      playPianoNote(ctx, midi, start + index * roll, velocity);
+    });
   });
 }
 
@@ -168,70 +194,64 @@ export const REPLAY_BPM = 132;
 /** Time between pour chords in replay (independent of the pulse). */
 const REPLAY_CHORD_STEP_SEC = 0.2;
 
-function playBeatPulse(reducedMotion: boolean, when?: number): void {
-  if (reducedMotion || audioMuted) return;
-  const ctx = getContext();
-  if (!ctx) return;
-  void ctx.resume();
-  const t = when ?? ctx.currentTime;
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = 'sine';
-  osc.frequency.value = midiToHz(GAME_TONIC_MIDI - 12);
-  gain.gain.setValueAtTime(0, t);
-  gain.gain.linearRampToValueAtTime(0.1, t + 0.006);
-  gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.1);
-  osc.connect(gain);
-  gain.connect(master(ctx));
-  osc.start(t);
-  osc.stop(t + 0.12);
+function playBeatPulse(when?: number): void {
+  withRunningContext((ctx) => {
+    const t = when ?? ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = midiToHz(GAME_TONIC_MIDI - 12);
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.1, t + 0.006);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.1);
+    osc.connect(gain);
+    gain.connect(master(ctx));
+    osc.start(t);
+    osc.stop(t + 0.12);
+  });
 }
 
-export function playChordSequence(chords: readonly Chord[], reducedMotion: boolean): void {
+export function playChordSequence(chords: readonly Chord[]): void {
   cancelChordReplay();
-  if (reducedMotion || audioMuted || chords.length === 0) return;
-  const ctx = getContext();
-  if (!ctx) return;
-  void ctx.resume();
-  if (masterBus) masterBus.gain.value = MASTER_GAIN;
+  if (audioMuted || chords.length === 0) return;
+  withRunningContext((ctx) => {
+    const beat = 60 / REPLAY_BPM;
+    const leadIn = 0.05;
+    const t0 = ctx.currentTime + leadIn;
+    const scheduleAt = (when: number, fn: () => void) => {
+      const delayMs = Math.max(0, (when - ctx.currentTime) * 1000);
+      replayTimers.push(window.setTimeout(fn, delayMs));
+    };
 
-  const beat = 60 / REPLAY_BPM;
-  const leadIn = 0.05;
-  const t0 = ctx.currentTime + leadIn;
-  const scheduleAt = (when: number, fn: () => void) => {
-    const delayMs = Math.max(0, (when - ctx!.currentTime) * 1000);
-    replayTimers.push(window.setTimeout(fn, delayMs));
-  };
+    const chordSpan =
+      chords.length <= 1 ? 0 : (chords.length - 1) * REPLAY_CHORD_STEP_SEC;
+    const pulseThrough = t0 + chordSpan + beat * 1.5;
+    const pulseBeats = Math.ceil((pulseThrough - t0) / beat);
 
-  const chordSpan =
-    chords.length <= 1 ? 0 : (chords.length - 1) * REPLAY_CHORD_STEP_SEC;
-  const pulseThrough = t0 + chordSpan + beat * 1.5;
-  const pulseBeats = Math.ceil((pulseThrough - t0) / beat);
+    for (let beatIndex = 0; beatIndex < pulseBeats; beatIndex += 1) {
+      const when = t0 + beatIndex * beat;
+      scheduleAt(when, () => {
+        const hit = Math.max(when, ctx.currentTime);
+        playBeatPulse(hit);
+      });
+    }
 
-  for (let beatIndex = 0; beatIndex < pulseBeats; beatIndex += 1) {
-    const when = t0 + beatIndex * beat;
-    scheduleAt(when, () => {
-      const hit = Math.max(when, ctx!.currentTime);
-      playBeatPulse(reducedMotion, hit);
-    });
-  }
-
-  chords.forEach((chord, index) => {
-    const when = t0 + index * REPLAY_CHORD_STEP_SEC;
-    scheduleAt(when, () => {
-      const hit = Math.max(when, ctx!.currentTime);
-      playChord(chord, reducedMotion, 1, hit);
+    chords.forEach((chord, index) => {
+      const when = t0 + index * REPLAY_CHORD_STEP_SEC;
+      scheduleAt(when, () => {
+        const hit = Math.max(when, ctx.currentTime);
+        playChord(chord, 1, hit);
+      });
     });
   });
 }
 
 export function playPigmentChord(
   pigmentId: string,
-  reducedMotion: boolean,
   blend?: PourSoundContext,
   rng?: () => number,
 ): Chord {
   const voiced = composePourChord(pigmentId, blend, rng);
-  playChord(voiced, reducedMotion);
+  playChord(voiced);
   return voiced;
 }

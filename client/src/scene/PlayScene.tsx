@@ -13,6 +13,7 @@ import {
   playPigmentChord,
   resetSoundSession,
   setAudioMuted,
+  unlockAudio,
 } from '../audio/playChord.ts';
 import type { Chord } from '../audio/pigment-chords.ts';
 import { mulberry32 } from '../audio/rng.ts';
@@ -163,11 +164,11 @@ export default function PlayScene({ paused, held, reducedMotion, onToggleHold }:
     const current = mixRef.current;
     if (!current || paused || matched(current) || current.drops.length >= current.maxDrops) return;
 
+    unlockAudio();
     const pourSeed = createPourSeed();
     const next = addDrop(current, pigment.rgb, pourSeed);
     const voiced = playPigmentChord(
       pigment.id,
-      reducedMotion,
       {
         targetColor: current.target,
         currentColor: currentMix(next),
@@ -211,6 +212,7 @@ export default function PlayScene({ paused, held, reducedMotion, onToggleHold }:
   }
 
   function dismissIntro(): void {
+    unlockAudio();
     try {
       sessionStorage.setItem(INTRO_SESSION_KEY, '1');
     } catch {
@@ -288,7 +290,10 @@ export default function PlayScene({ paused, held, reducedMotion, onToggleHold }:
             className="icon-btn"
             aria-label="Play pour chords"
             disabled={pourChordCount === 0 || muted}
-            onClick={() => playChordSequence(gameChordsRef.current, reducedMotion)}
+            onClick={() => {
+              unlockAudio();
+              playChordSequence(gameChordsRef.current);
+            }}
           >
             <ReplayChordsIcon />
           </button>
