@@ -23,11 +23,19 @@ export function clearJuice(): void {
 }
 
 /** Transform and opacity only. The caller reads layout once per tap. */
-export function flyPigment(from: DOMRect, to: DOMRect, color: string, reduce: boolean): Promise<void> {
+export function flyPigment(
+  from: DOMRect,
+  to: DOMRect,
+  color: string,
+  reduce: boolean,
+  landing: { x: number; y: number } = { x: 0.5, y: 0.5 },
+): Promise<void> {
   if (reduce) return Promise.resolve();
   const el = spawn('flyer');
   el.style.background = color;
   const size = 28;
+  const landX = Math.min(1, Math.max(0, landing.x));
+  const landY = Math.min(1, Math.max(0, landing.y));
   return new Promise((resolve) => {
     gsap.fromTo(
       el,
@@ -38,10 +46,10 @@ export function flyPigment(from: DOMRect, to: DOMRect, color: string, reduce: bo
         opacity: 1,
       },
       {
-        x: to.left + to.width / 2 - size / 2,
-        y: to.top + to.height / 2 - size / 2,
-        scale: 0.35,
-        opacity: 0.9,
+        x: to.left + landX * to.width - size / 2,
+        y: to.top + landY * to.height - size / 2,
+        scale: 0.5,
+        opacity: 1,
         duration: 0.38,
         ease: 'power2.in',
         overwrite: 'auto',

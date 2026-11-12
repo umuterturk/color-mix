@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
 import { closeness, colorDistance, rgbCss } from '../../../shared/color.ts';
+import { pourLanding } from '../../../shared/diffusion.ts';
 import { addDrop, clearDrops, currentMix, emptyMix, matched, type MixState } from '../../../shared/mix-state.ts';
 import type { Pigment, PublicRound } from '../../../shared/types.ts';
 import { useMotionPause } from '../hooks/useMotionPause.ts';
 import { burst, clearJuice, flyPigment, punch } from '../motion/juice.ts';
 import { loadRound } from '../studio.ts';
+import { WellDiffusion } from './WellDiffusion.tsx';
 
 type PlaySceneProps = {
   paused: boolean;
@@ -66,7 +68,7 @@ export default function PlayScene({ paused, held, reducedMotion, onExit, onToggl
       if (!reducedMotion && wellRef.current) {
         const from = event.currentTarget.getBoundingClientRect();
         origin = wellRef.current.getBoundingClientRect();
-        await flyPigment(from, origin, rgbCss(pigment.rgb), false);
+        await flyPigment(from, origin, rgbCss(pigment.rgb), false, pourLanding(mix.drops.length));
       }
       let next: MixState | null = null;
       setMix((current) => {
@@ -138,7 +140,15 @@ export default function PlayScene({ paused, held, reducedMotion, onExit, onToggl
           <figcaption>Swatch</figcaption>
         </figure>
         <div className="well-block">
-          <div ref={wellRef} className={won ? 'well matched' : 'well'} style={wellStyle} />
+          <div ref={wellRef} className={won ? 'well matched' : 'well'} style={wellStyle}>
+            <WellDiffusion
+              roundId={round.id}
+              base={mix.base}
+              drops={mix.drops}
+              paused={paused}
+              reducedMotion={reducedMotion}
+            />
+          </div>
           <p className={won ? 'readout won' : 'readout'} aria-live="polite">
             {won ? (
               'Matched'
