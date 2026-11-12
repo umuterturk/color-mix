@@ -5,6 +5,7 @@ import type { Pigment, PublicRound } from '../../../shared/types.ts';
 import { useMotionPause } from '../hooks/useMotionPause.ts';
 import { burst, clearJuice, flyPigment, punch } from '../motion/juice.ts';
 import { loadRound } from '../studio.ts';
+import { WellCanvas } from './WellCanvas.tsx';
 
 type PlaySceneProps = {
   paused: boolean;
@@ -138,7 +139,17 @@ export default function PlayScene({ paused, held, reducedMotion, onExit, onToggl
           <figcaption>Swatch</figcaption>
         </figure>
         <div className="well-block">
-          <div ref={wellRef} className={won ? 'well matched' : 'well'} style={wellStyle} />
+          <div ref={wellRef} className={won ? 'well matched' : 'well'} style={wellStyle}>
+            <WellCanvas
+              color={color}
+              base={mix.base}
+              pours={mix.drops.length}
+              pigment={mix.drops.at(-1) ?? null}
+              speed={mix.speed}
+              paused={paused}
+              reducedMotion={reducedMotion}
+            />
+          </div>
           <p className={won ? 'readout won' : 'readout'} aria-live="polite">
             {won ? (
               'Matched'

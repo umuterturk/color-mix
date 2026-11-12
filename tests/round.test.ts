@@ -61,9 +61,16 @@ test('addDrop stops at maxDrops and clearDrops empties the well', () => {
     state = addDrop(state, pigment);
   }
   expect(state.drops).toHaveLength(planned.publicRound.maxDrops);
+  expect(state.speed.x).toBeGreaterThan(10);
+  expect(state.speed.y).toBeCloseTo(0);
+
+  const held = addDrop({ ...state, speed: { x: 1, y: 2 } }, pigment);
+  expect(held.drops).toHaveLength(planned.publicRound.maxDrops);
+  expect(held.speed).toEqual({ x: 1, y: 2 });
 
   const cleared = clearDrops(state);
   expect(cleared.drops).toEqual([]);
+  expect(cleared.speed).toEqual({ x: 0, y: 0 });
   expect(cleared.target).toEqual(state.target);
   expect(state.drops).toHaveLength(planned.publicRound.maxDrops);
 });
